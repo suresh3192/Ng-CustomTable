@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+-->
+<meta name="robots" content="noindex">
+<html ng-app="app">
+<head>
+<script src="http://code.jquery.com/jquery.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.4/angular.js"></script>
+<link href="http://twitter.github.com/bootstrap/assets/css/bootstrap.css" rel="stylesheet" type="text/css" />
+<link href="http://twitter.github.com/bootstrap/assets/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" />
+<script src="http://twitter.github.com/bootstrap/assets/js/bootstrap.js"></script>
+<link href="http://code.jquery.com/ui/jquery-ui-git.css" rel="stylesheet" type="text/css" />
+<script src="http://code.jquery.com/jquery-git.js"></script>
+<script src="http://code.jquery.com/ui/jquery-ui-git.js"></script>
+  <script src="http://angular-ui.github.com/angular-ui/build/angular-ui.js"></script>
+  <link href="http://angular-ui.github.com/angular-ui/build/angular-ui.css" rel="stylesheet" type="text/css" />
+  <script src="http://angular-ui.github.com/bootstrap/ui-bootstrap-tpls-0.1.0.js"></script>
+<meta charset=utf-8 />
+<title>JS Bin</title>
+  
+  <!-- Paged List - Start -->
+  <script id="/partials/paged-list.html" type="text/ng-template">
+    <div class="content">
+      <table class="table table-bordered table-striped table-animated">
+        <thead>
+          <th ng-repeat="header in headers">
+            {{header}}
+          </th>
+        </thead>
+        <tbody>
+          <tr ng-repeat="item in pageItems" script-transclude>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </script>
+  <!-- Paged List - End -->
+  
+  <!-- Auto-pagination - Start -->
+  <script id="/partials/auto-pagination.html" type="text/ng-template">
+    <pagination num-pages="numPages" current-page="currentPage" previous-text="{{previousText}}" next-text="{{nextText}}" class="pagination"></pagination>
+  </script>
+  <!-- Auto-pagination - End -->
+<style id="jsbin-css">
+.table-animated {
+  margin-bottom: 0px;
+}
+</style>
+</head>
+<body ng-controller="Ctrl">
+  
+  <span ng-show="clients">
+    {{clients.length}} records | {{clients | pages: pageSize}} pages
+  </span>
+  <span ng-hide="clients">Waiting for data...</span>
+  
+  <hr>
+  
+  <div class="well">
+    <paged-list data="clients" current-page="currentPage" page-size="pageSize" headers="headers">
+      <script type="text/html">
+        <td>{{item.first}}</td>
+        <td>{{item.last}}</td>
+      </script>
+    </paged-list>
+  </div>
+  
+  <auto-pagination data="clients" page-size="pageSize" current-page="currentPage" previous-text="Anterior" next-text="Seguinte">
+  </auto-pagination>
+  
+   
+<script id="jsbin-javascript">
+var app = angular.module('app', ['ui.bootstrap']);
+
+app.controller('Ctrl', function($scope, $element, $timeout){
+  
+  $scope.pageSize = 4;
+  $scope.currentPage = 1;
+  
+  // Simulates data coming from an external service
+  var getData = function () {
+    
+    $scope.clients = [
+      { first: 'Marco', last: 'Alves' },
+      { first: 'Susana', last: 'Coutinho' },
+      { first: 'Maria', last: 'Rita' },
+      { first: 'Angélica', last: 'Manteigas' },
+      { first: 'Angular', last: 'JS' },
+      { first: 'j', last: 'Query' },
+      { first: 'underscore', last: 'js' },
+      { first: 'boot', last: 'strap' },
+      { first: 'direct', last: 'ive' },
+      { first: 'filt', last: 'er' },
+      { first: 'serv', last: 'ice' }
+    ];
+  };
+ 
+  
+  $scope.headers = ['First', 'Last'];
+
+  
+  $timeout(getData, 3000);
+ 
+});
+
+
+
+
+// Customizable animated paged list directive. Pages changes are animated.
+// Row content can be customized by providing a template wrapped within a 
+// script tag -- see scriptTransclude for more. Headers are customizable via
+// attribute.
+
+app.directive('pagedList', function($filter){
+  
+  var pageFilter = $filter('page');
+  
+  return {
+    restrict: 'E',
+    templateUrl: '/partials/paged-list.html',
+    scope: { data: '=', currentPage: '=', pageSize: '=', headers: '=', config: '=' },
+    transclude: true,
+    link: function(scope, element){
+      
+      var $content = $(element).find('.content');
+
+      var state = {
+        height: undefined
+      };
+      
+      
+      // Default configurations
+      var config = { 
+        speed: 400, 
+        directions: {
+          next: { hide: 'left', show: 'right'},
+          prev: { hide: 'right', show: 'left'}
+        }
+      };
+      
+      // Override default configs with user-provided configs
+      angular.extend(config, scope.config);
+      
+      
+      // Helper that checks if there are page items defined
+      var dataIsReady = function(){
+        var pageItems = scope.pageItems;
+        var isReady = angular.isDefined(pageItems) && pageItems.length >= 1;
+        console.log('data is ready', isReady);
+        return isReady;
+      };
+      
+      
+      // Helper that calculate the height of the content
+      var calculateHeight = function(){
+        var contentHeight = $content.find('table').outerHeight(true);
+        return contentHeight;
+      };
+      
+      
+      // Sets the height of the container only once: when the rows 
+      // corresponding to the data are inserted in the DOM
+      var updateHeight = function(){
+        if (!state.height && dataIsReady()) {
+          state.height = calculateHeight();
+          $content.height(state.height);
+          console.log('set height to', state.height);
+        }
+      };
+      
+      
+      // Helper to hide the current page
+      var hide = function(direction, clbk){
+         $content.hide('slide', {direction: direction}, config.speed, clbk);
+      };
+      
+      // Helper to show the next page
+      var show = function(direction, clbk){
+         $content.show('slide', {direction: direction }, config.speed, clbk);
+      };
+      
+      
+      // Handles animation according to direction of page number change
+      // If is is the first time, does not animate and shows the first
+      // page. If page number increases/decrease, it animates accordingly
+      // left/right
+      
+      var advancedSwitch = function(curr, prev){
+        var bothDefined = angular.isDefined(curr) && angular.isDefined(prev);
+        var decrease = bothDefined && prev > curr;
+        var increase = bothDefined && prev < curr;
+        var first = curr === prev;
+        
+        if (first) {
+          console.log('first');
+          updatePageItems();
+        }
+        
+        if (increase) {
+          console.log('increasing');
+          simpleSwitch(config.directions.next);
+        }
+        
+        
+        if (decrease) {
+          console.log('decreasing');
+          simpleSwitch(config.directions.prev);
+        }
+        
+      };
+      
+      // Helper that andles page transition (hides the current page 
+      // and shows the next one)
+      var simpleSwitch = function(direction){
+        hide(direction.hide, function(){
+          updatePageItems();
+          if (!scope.$$phase) scope.$apply();
+          show(direction.show);
+        });
+      };
+      
+      
+      // Uses the pageFilter to get items corresponding to the
+      // given page number (defined by currentPage)
+      var getPageItems = function(){
+        var data = scope.data;
+        var pageSize = scope.pageSize;
+        var currentPage = scope.currentPage;
+        var pageItems = pageFilter(data, currentPage, pageSize);
+        console.log('page items for: ', currentPage, ' of ', pageSize, ' : ', pageItems, ' of ', data);
+        return pageItems;
+      };
+      
+      var updatePageItems = function(){
+        scope.pageItems = getPageItems();
+      };
+      
+      
+      // Used to check if the first page data has been loaded
+      // and it has resulted in the corresponding number of rows
+      var rowCount = function(){
+        return $content.find('table').find('tr').length;
+      };
+      
+      
+      
+      var onPageChange = function(curr, prev){
+        console.log(curr, prev);
+        advancedSwitch(curr, prev);
+      };
+      
+      
+      var onDataChange = function(){
+        updatePageItems();
+      };
+      
+      
+      scope.$watch('currentPage', onPageChange, true);
+      
+      scope.$watch('data', onDataChange, true);
+      
+      scope.$watch(rowCount, updateHeight, true);
+      
+    }
+  };
+});
+
+
+// Directive that creates a pagination just by given the related data and
+// the page size. It builds on top of the ui-bootstrap pagination directive
+// Uses the pages filter to determine how many pages are required for a
+// given data set and page size  
+
+app.directive('autoPagination', function($filter){
+  var pageFilter = $filter('pages');
+  
+  return {
+    restrict: 'E',
+    templateUrl: '/partials/auto-pagination.html',
+    scope: { 
+      data: '=', pageSize: '=', maxSize: '=', currentPage: '=',
+      nextText: '@', previousText: '@'
+    },
+    link: function (scope, element) {
+      var updatePages = function(){
+        var pages = pageFilter(scope.data, scope.pageSize);
+        scope.numPages = pages;
+      };
+      
+      scope.$watch('data', updatePages, true);
+      
+      scope.$watch('pageSize', updatePages, true);
+      
+    }
+  };
+});
+
+
+// Returns the items for the given page number of a data set and given
+// page size
+app.filter('page', function(){
+  return function (array, page, pageSize){
+    if (!angular.isDefined(array)) return [];
+    
+    page = page === undefined? 1: page;
+    pageSize = pageSize === undefined? 10: pageSize;
+    
+    var start = pageSize * (page - 1);
+    var end = pageSize * page;
+    
+    return array.slice(start, end);
+  };
+});
+
+
+
+// Returns the number of pages for a data set and give page size
+
+app.filter('pages', function () {
+  
+  return function(array, pageSize){
+    var dataSize, completePages, incompletePage, pages;
+
+    if (array) {
+        dataSize = array.length;
+        pageSize = pageSize === undefined? 10 : pageSize;
+        pages = Math.ceil(dataSize / pageSize);
+        return pages;
+    }
+  };
+});
+
+
+
+// Handles transclusion of strange cases such as transcluding a td into a tr
+// it require that the transcluded content has to wrapped in script that
+// has a type attribute of "text/html"
+
+app.directive('scriptTransclude', function(){
+  return {
+    compile: function(elem, attrs, transcludeFn){
+      transcludeFn(elem, function(clone){
+        $content = $(clone).filter('script').text();
+        $(elem).append($content.replace(/&lt;/gi, '<').replace(/&gt;/gi, '>'));
+      });
+    }
+  };
+});
+
+
+
+
+// Provides a slice of an array just like the array.prototype.slice method
+// --- Not used in this example
+
+app.filter('slice', function () {
+  return function (array, start, end) {
+    if (array) {
+      start = start === undefined? 0: start;
+      end = end === undefined? array.length : end;
+      return array.slice(start, end);
+    }
+  };
+});
+
+
+
+// Creates an array of integers
+// --- Not used in this example
+
+app.filter('range', function(){
+  return function(input, start, end, step){
+    var range = [];
+    
+    for (var i = start; i < end; i += step) {
+      range.push(i);
+    }
+    return range;
+  };
+});
+
+</script>
+</body>
+</html>
